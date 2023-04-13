@@ -4,19 +4,19 @@ pipeline {
     stages {
         stage('Checkout') {
             steps {
-                git branch: 'master', url: 'https://github.com/your-repo.git'
+                git branch: 'main', url: 'https://github.com/Gil1981/DockerImage'
             }
         }
 
         stage('Build') {
             steps {
-                sh 'docker build -t your-image-name .'
+                sh 'docker build -t DockerImage .'
             }
         }
 
         stage('Test') {
             steps {
-                sh 'docker run your-image-name npm test'
+                sh 'docker run DockerImage npm test'
             }
         }
     }
