@@ -10,13 +10,19 @@ pipeline {
 
         stage('Build') {
             steps {
+<<<<<<< HEAD
                 sh 'docker build -t DockerImage .'
+=======
+               
             }
         }
 
         stage('Test') {
             steps {
+<<<<<<< HEAD
                 sh 'docker run DockerImage npm test'
+=======
+               
             }
         }
     }
