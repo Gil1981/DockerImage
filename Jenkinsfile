@@ -16,7 +16,7 @@ pipeline {
 
         stage('Test') {
             steps {
-                sh 'docker run unit test'
+                sh 'docker run Test-Unit'
             }
         }
     }
