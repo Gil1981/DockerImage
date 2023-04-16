@@ -1,7 +1,3 @@
-properties([pipelineTriggers([githubPush()])])
-
-
-
 pipeline {
      agent {label 'main'}
 	environment {
