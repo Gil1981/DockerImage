@@ -1,29 +1,88 @@
-pipeline {
-    agent any
+properties([pipelineTriggers([githubPush()])])
 
+
+
+pipeline {
+     agent {label 'master'}
+	environment {
+    TIME = sh(script: 'date "+%Y-%m-%d %H:%M:%S"', returnStdout: true).trim()
+      }
+//            triggers {
+//                githubPush()
     stages {
-        stage('Checkout') {
+        // stage ('checkout scm'){
+        //     steps {
+        //         checkout([
+        //             $class: 'GitSCM',
+        //             branches: [[name: 'main']],
+        //             userRemoteConfigs : [[
+        //                 url: 'git@github.com:Gil1981/Project1',
+        //                 credentialsId: ''
+        //                 ]]
+        //             ])
+        //     }
+        // }
+        stage('Cleanup') { agent none
             steps {
-                git url: 'https://github.com//Gil1981/DockerImage'
+                sh "rm -rf Project1"
             }
         }
-
+        stage('Clone repo') {
+            steps {
+                sh "ls -la"
+                sh "git clone https://github.com/Gil1981/Project1.git"
+                sh "ls -la"
+            }
+        }
         stage('Build') {
             steps {
-                sh 'docker build -t DockerImage .'
+                sh "docker build -t hello-web:1 ./Project1"
+                sh "docker images"
             }
         }
-
-        stage('Test') {
+        stage('Run image') {
             steps {
-                sh 'docker run DockerImage npm test'
-            }
+                sh "docker run -d -p 80:80 hello-web:1"
+            }    
         }
+	    stage("build user") {
+    steps{
+    wrap([$class: 'BuildUser', useGitAuthor: true]) {
+      sh 'echo ${BUILD_USER} >> Result.json'
     }
-
-    post {
-        always {
-            junit 'path/to/test/results'
+  }
+}
+	stage("testing") {
+       steps {
+        script {
+           STATUS = sh(script: "curl -I \$(dig +short myip.opendns.com @resolver1.opendns.com):80 | grep \"HTTP/1.1 200 OK\" | tr -d \"\\r\\n\"", returnStdout: true).trim()
+            sh 'curl -I $(dig +short myip.opendns.com @resolver1.opendns.com):80 | grep "HTTP/1.1 200 OK" >> Result.json'
+            sh 'echo "$STATUS" >> Result.json'
+			sh 'echo "${TIME}" >> Result.json'	
+            withAWS(credentials: 'JenkinsAWS', region: 'us-east-1') {
+                sh "aws dynamodb put-item --table-name result --item '{\"user\": {\"S\": \"${BUILD_USER}\"}, \"date\": {\"S\": \"${TIME}\"}, \"state\": {\"S\": \"${STATUS}\"}}'"
+            }
         }
     }
 }
+        stage('Stop app container') {
+            steps {
+                sh 'docker stop $(docker ps -q | head -n 1)'
+		build job: 'app_deployment'
+            }
+        }
+        stage('Upload file to S3'){
+            steps{
+                withAWS(credentials:'JenkinsAWS', region:'us-east-1'){
+                    s3Upload(bucket:'jenkins-sqlabs-Gil1981',path: 'Project1/', includePathPattern:'Result*')
+                }
+            }
+        }
+    }
+//    post {
+//        success {
+//            sh 'docker stop $(docker ps -q | head -n 1)'
+//        }
+//    }    
+}
+
